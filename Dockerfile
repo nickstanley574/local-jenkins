@@ -19,12 +19,12 @@ ENV JAVA_OPTS -Djenkins.install.runSetupWizard=false -Dhudson.plugins.git.GitSCM
 
 # Set initial admin password
 COPY security.groovy /usr/share/jenkins/ref/init.groovy.d/
+COPY settings.groovy /usr/share/jenkins/ref/init.groovy.d/
 
 # Install plugins
 RUN jenkins-plugin-cli --plugins \
 "workflow-aggregator:latest \
-pipeline-stage-view:latest \
-pipeline-graph-view \
+pipeline-graph-view:latest \
 configuration-as-code:latest \
 job-dsl:latest \
 git:latest \
