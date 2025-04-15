@@ -35,6 +35,10 @@ jenkins_pid=$!
 
 # Wait for Jenkins to be accessible at http://localhost:8080/
 echo "[entrypoint.sh] Waiting for Jenkins to be accessible..."
+
+# Give Jenkins a little time to start before checking if its online
+sleep 3
+
 while ! curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/ | grep -q "200"; do
     sleep 1
 done
@@ -43,10 +47,11 @@ cd /tmp
 curl -Os http://localhost:8080/jnlpJars/jenkins-cli.jar 
 java -jar jenkins-cli.jar -s http://localhost:8080/ -auth admin:admin reload-jcasc-configuration
 
-echo "[entrypoint.sh] http://localhost:8080/"
+printf "\n[entrypoint.sh] http://localhost:8080/\n\n"
 
 # Use inotifywait to monitor the Jenkinsfile and reload the jcasc file on a change.
 jenkinsfile=/mnt/local-project/Jenkinsfile
+
 while true; do
     inotifywait -e modify "$jenkinsfile"
     echo "[entrypoint.sh] $jenkinsfile updated."
