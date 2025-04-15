@@ -17,19 +17,6 @@ trap 'cleanup_and_exit' INT
 
 : "${LOCAL_JENKINS_PORT:=8080}"
 
-# LOCAL=$(git rev-parse @)
-# REMOTE=$(git rev-parse @{u})
-# BASE=$(git merge-base @ @{u})
-
-# if [ $LOCAL = $REMOTE ]; then
-#     echo "[$script_name] INFO: Local branch is up to date with the remote branch."
-# elif [ $LOCAL = $BASE ]; then
-#     echo "[$script_name] WARNING: Local branch is behind the remote branch. Need to pull."
-# elif [ $REMOTE = $BASE ]; then
-#     echo "[$script_name] WARNING: Local branch is ahead of the remote branch. Need to push."
-# else
-#     echo "[$script_name] WARNING: Local and remote branches have diverged. Need to merge."
-# fi
 
 LOCAL_JENKINS_DOCKER_SOCKET=$(echo $DOCKER_HOST | sed 's|unix://||')
 LOCAL_JENKINS_DOCKER_BIN=$(which docker)
