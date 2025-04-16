@@ -8,7 +8,8 @@ RUN apt-get update && \
     vim \
     inotify-tools \
     acl \
-    sudo
+    sudo \
+    yq
 
 RUN echo "jenkins ALL=(ALL) NOPASSWD: /usr/bin/setfacl -m u\\:jenkins\\:rw- /var/run/docker.sock" >> /etc/sudoers
 
