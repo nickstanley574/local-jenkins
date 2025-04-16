@@ -17,21 +17,18 @@ cleanup_and_exit() {
 # Trap interrupt signal (Ctrl+C) and call cleanup_and_exit function
 trap 'cleanup_and_exit' INT
 
-docker --version
-docker buildx version
-
-
+echo -e "\n[$script_name] $(docker --version)"
+echo -e "[$script_name] Docker buildx version: $(docker buildx version)"
 
 : "${LOCAL_JENKINS_PORT:=8080}"
-
 
 LOCAL_JENKINS_DOCKER_SOCKET=$(echo $DOCKER_HOST | sed 's|unix://||')
 LOCAL_JENKINS_DOCKER_BIN=$(which docker)
 
-echo -e "\n\n[$script_name] LOCAL_JENKINS_DOCKER_SOCKET=$LOCAL_JENKINS_DOCKER_SOCKET"
+echo -e "[$script_name] LOCAL_JENKINS_DOCKER_SOCKET=$LOCAL_JENKINS_DOCKER_SOCKET"
 echo -e "[$script_name] LOCAL_JENKINS_DOCKER_BIN=$LOCAL_JENKINS_DOCKER_BIN\n\n"
 
-docker buildx build -t ${CONTAINER_NAME} .
+docker buildx build ${DEBUG:+--progress=plain} -t "${CONTAINER_NAME}" .
 
 parent_directory=$(basename "$(dirname "$(pwd)")")
 
