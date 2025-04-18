@@ -27,6 +27,7 @@ COPY --chown=jenkins jenkins.yaml /var/lib/jenkins/jenkins.yaml
 ENV CASC_JENKINS_CONFIG=/var/lib/jenkins/jenkins.yaml
 
 COPY jenkins_config_init.sh /tmp/jenkins_config_init.sh
+COPY required_plugins.txt /tmp/required_plugins.txt
 RUN /tmp/jenkins_config_init.sh
 RUN jenkins-plugin-cli --plugins --verbose -f /tmp/plugins.txt 2>&1 | tee
 
