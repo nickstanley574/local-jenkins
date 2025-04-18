@@ -1,8 +1,9 @@
 jenkins:
   systemMessage: |
     <div style="padding: 20px; background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; font-weight: bold; border-radius: 5px; margin: 15px; font-size: 1.2em; text-align: center;">
-    Configured by CasC: This Jenkins installation for local development. Many critical security settings have been disabled.
-    Additionally, everything is this Jenkins container should be assumed to be ephemeral, do not rely on data to survive restarts.
+    Configured by CasC: This Jenkins installation for local development.<br>
+    Many critical security settings have been disabled.<br>
+    Everything is this Jenkins container should be assumed to be ephemeral, do not rely on data to survive restarts.
     </div>
   securityRealm:
     local:
@@ -13,14 +14,4 @@ jenkins:
       rawHtml:
         disableSyntaxHighlighting: false
 
-jobs:
-  - script: >
-      pipelineJob('${LOCAL_JENKINS_JOB_NAME}') {
-        theScript = new File('/mnt/local-project/Jenkinsfile').getText("UTF-8")
-        definition {
-          cps {
-            script(theScript)
-            sandbox()
-          }
-        }
-      }
+jobs: []

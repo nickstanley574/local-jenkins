@@ -9,8 +9,8 @@ CODE_DIRECTORY=$1
 
 cleanup_and_exit() {
     echo -e "\nCleaning up and exiting please wait..."
-    docker stop $CONTAINER_NAME > /dev/null 2>&1
-    docker rm $CONTAINER_NAME > /dev/null 2>&1
+    docker stop $CONTAINER_NAME 1>/dev/null
+    docker rm $CONTAINER_NAME 1>/dev/null
     exit 0
 }
 
@@ -26,19 +26,23 @@ LOCAL_JENKINS_DOCKER_SOCKET=$(echo $DOCKER_HOST | sed 's|unix://||')
 LOCAL_JENKINS_DOCKER_BIN=$(which docker)
 
 echo -e "[$script_name] LOCAL_JENKINS_DOCKER_SOCKET=$LOCAL_JENKINS_DOCKER_SOCKET"
-echo -e "[$script_name] LOCAL_JENKINS_DOCKER_BIN=$LOCAL_JENKINS_DOCKER_BIN\n\n"
+echo -e "[$script_name] LOCAL_JENKINS_DOCKER_BIN=$LOCAL_JENKINS_DOCKER_BIN"
 
-docker buildx build ${DEBUG:+--progress=plain} -t "${CONTAINER_NAME}" .
+echo -e "\n[$script_name] Build local-jenkins image..."
 
-parent_directory=$(basename "$(dirname "$(pwd)")")
+# Use Docker Buildx to build the local Jenkins image. Sets a custom build context named 'projectsource'
+# to the value of CODE_DIRECTORY, making that directory available to the Dockerfile under that name.
+# Enables plain progress output if DEBUG is set, and tags the image with CONTAINER_NAME.
+docker buildx build --build-context projectsource=${CODE_DIRECTORY} ${DEBUG:+--progress=plain} -t "${CONTAINER_NAME}" .
+
+echo -e "[$script_name] Run local-jenkins container..."
 
 docker run -d \
   --name ${CONTAINER_NAME} \
   -p "$LOCAL_JENKINS_PORT:8080" \
-  -v $(pwd)/../.:/mnt/local-project:ro \
+  -v $CODE_DIRECTORY:/mnt/local-project:ro \
   -v ${LOCAL_JENKINS_DOCKER_SOCKET}:/var/run/docker.sock \
   -v ${LOCAL_JENKINS_DOCKER_BIN}:/usr/bin/docker \
-  -e LOCAL_JENKINS_JOB_NAME=$parent_directory \
   -e LOCAL_JENKINS_PORT=$LOCAL_JENKINS_PORT \
   ${CONTAINER_NAME}
 

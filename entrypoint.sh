@@ -33,9 +33,6 @@ fi
 # Store the process ID (PID) of the last background command
 jenkins_pid=$!
 
-# Wait for Jenkins to be accessible at http://localhost:8080/
-echo "[entrypoint.sh] Waiting for Jenkins to be accessible..."
-
 # Give Jenkins a little time to start before checking if its online
 sleep 3
 
@@ -49,12 +46,24 @@ java -jar jenkins-cli.jar -s http://localhost:8080/ -auth admin:admin reload-jca
 
 printf "\n[entrypoint.sh] http://localhost:8080/\n\n"
 
-# Use inotifywait to monitor the Jenkinsfile and reload the jcasc file on a change.
-jenkinsfile=/mnt/local-project/Jenkinsfile
+# Use inotifywait to monitor the Jenkinsfiles and reload the jcasc file on a change.
+
+yaml_file="/tmp/local-jenkins.yaml" # replace with your actual file path
+
+# Extract files from the YAML
+watched_files=()
+while read -r name file; do
+    watched_files+=(""/mnt/local-project/$file"")
+done < <(yq -r '.jobs[] | "\(.name) \(.file)"' "$yaml_file")
+
+# Join files into a single space-separated string for inotifywait
+watch_list="${watched_files[@]}"
+
+echo "[entrypoint.sh] Watching files for changes: $watch_list"
 
 while true; do
-    inotifywait -e modify "$jenkinsfile"
-    echo "[entrypoint.sh] $jenkinsfile updated."
+    changed_file=$(inotifywait -e modify --format '%w%f' $watch_list)
+    echo "[entrypoint.sh] $changed_file updated."
     java -jar jenkins-cli.jar -s http://localhost:8080/ -auth admin:admin reload-jcasc-configuration
 done
 

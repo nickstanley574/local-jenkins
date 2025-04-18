@@ -1,0 +1,8 @@
+#!/bin/bash
+
+COMMAND_DIRECTORY=$PWD
+
+cd "$(dirname "$0")"
+cd ..
+
+./run-local-jenkins.sh $COMMAND_DIRECTORY
