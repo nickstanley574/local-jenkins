@@ -2,21 +2,15 @@
 
 set -ex
 
-
+yaml_file="/tmp/local-jenkins.yaml"
 
 # PLUGINS
 
-yq -r '.plugins[]' /tmp/local-jenkins.yaml > /tmp/plugins.txt
+yq -r '.plugins[]' $yaml_file > /tmp/plugins.txt
 
 plugin_file="/tmp/plugins.txt"
 
-# Define an array with the lines we want to ensure exist in the file
-required_plugins=(
-  "configuration-as-code:latest"
-  "job-dsl:latest"
-  "workflow-aggregator:latest"
-  "pipeline-graph-view:latest"
-)
+readarray -t required_plugins < require_plugins.txt
 
 # Loop through each line in the array
 for plugin in "${required_plugins[@]}"; do
@@ -26,7 +20,7 @@ for plugin in "${required_plugins[@]}"; do
 
   # Check if any line in the file starts with the prefix
   if grep -q "^$plugin_name" "$plugin_file"; then
-    echo "WARNING: $plugin_name set in local.jenkins.yaml. This bypasses default plugin management of a required plugin. Use at your own risk."
+    echo "WARNING: $plugin_name set in $yaml_file. This bypasses default plugin management of a required plugin. Use at your own risk."
   else
     echo "Adding local-jenkins required plugin '$plugin' to plugin install list."
     echo "$plugin" >> "$plugin_file"
@@ -61,7 +55,7 @@ add_jenkins_job() {
 }
 
 
-yaml_file="/tmp/local-jenkins.yaml" # replace with your actual file path
+
 
 
 # Assuming your YAML file is called jobs.yaml
