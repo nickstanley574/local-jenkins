@@ -10,7 +10,7 @@ yq -r '.plugins[]' $yaml_file > /tmp/plugins.txt
 
 plugin_file="/tmp/plugins.txt"
 
-readarray -t required_plugins < require_plugins.txt
+readarray -t required_plugins < /tmp/required_plugins.txt
 
 # Loop through each line in the array
 for plugin in "${required_plugins[@]}"; do
