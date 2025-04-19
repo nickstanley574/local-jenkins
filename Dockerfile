@@ -18,9 +18,8 @@ USER jenkins
 # Skip initial setup wizard and Allow local checkout (INSECURE SETTING APPLIED)
 ENV JAVA_OPTS -Djenkins.install.runSetupWizard=false -Dhudson.plugins.git.GitSCM.ALLOW_LOCAL_CHECKOUT=true
 
-# Set initial admin password
-COPY security.groovy /usr/share/jenkins/ref/init.groovy.d/
-COPY settings.groovy /usr/share/jenkins/ref/init.groovy.d/
+# Copy groovy startup script to the correct directory. 
+COPY init.groovy /usr/share/jenkins/ref/init.groovy.d/
 
 COPY --from=projectsource local-jenkins.yaml /tmp/local-jenkins.yaml
 COPY --chown=jenkins jenkins.yaml /var/lib/jenkins/jenkins.yaml
