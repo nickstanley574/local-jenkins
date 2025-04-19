@@ -24,4 +24,4 @@ instance.save()
 import io.jenkins.plugins.pipelinegraphview.PipelineGraphViewConfiguration;
 
 PipelineGraphViewConfiguration.get().showGraphOnJobPage = true
-PipelineGraphViewConfiguration.get().showGraphOnBuildPage = trueq
+PipelineGraphViewConfiguration.get().showGraphOnBuildPage = true
