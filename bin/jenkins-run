@@ -21,6 +21,26 @@ cleanup_and_exit() {
 trap 'cleanup_and_exit' INT
 
 
+security_options=$(docker info --format '{{.SecurityOptions}}')
+
+if [[ $security_options != *"rootless"* ]]; then
+    if [ "$LOCAL_JENKINS_ALLOW_ROOTLESS" = "true" ]; then
+        echo
+        echo "[entrypoint.sh] WARNING: Docker is NOT in rootless mode. Continuing"
+        echo "                because LOCAL_JENKINS_ALLOW_ROOTLESS is true."
+        echo "                See more https://docs.docker.com/engine/security/rootless/"
+        echo
+    else
+        echo "[entrypoint.sh] ERROR: Docker rootless mode is not enabled. It is"
+        echo "                recommend to run docker in rootless mode."
+        echo "                See more https://docs.docker.com/engine/security/rootless/"
+        echo "                To override set LOCAL_JENKINS_ALLOW_ROOTLESS=true"
+        exit 1
+    fi
+else
+    echo "[entrypoint.sh] INFO: docker rootless mode enabled."
+fi
+
 
 CONFIG_FILE="$CODE_DIRECTORY/local-jenkins.yaml"
 DEFAULT_PORT="8080"
