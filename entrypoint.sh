@@ -44,8 +44,6 @@ cd /tmp
 curl -Os http://localhost:8080/jnlpJars/jenkins-cli.jar 
 java -jar jenkins-cli.jar -s http://localhost:8080/ -auth admin:admin reload-jcasc-configuration
 
-printf "\n[entrypoint.sh] http://localhost:8080/\n\n"
-
 # Use inotifywait to monitor the Jenkinsfiles and reload the jcasc file on a change.
 
 yaml_file="/tmp/local-jenkins.yaml" # replace with your actual file path

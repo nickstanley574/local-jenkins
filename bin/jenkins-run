@@ -11,7 +11,7 @@ script_name=$(basename "$0")
 CONTAINER_NAME=local-jenkins
 
 cleanup_and_exit() {
-    echo -e "\nCleaning up and exiting please wait..."
+    echo -e "\n[$script_name] Cleaning up and exiting please wait..."
     docker stop $CONTAINER_NAME 1>/dev/null
     docker rm $CONTAINER_NAME 1>/dev/null
     exit 0
@@ -20,10 +20,25 @@ cleanup_and_exit() {
 # Trap interrupt signal (Ctrl+C) and call cleanup_and_exit function
 trap 'cleanup_and_exit' INT
 
-echo -e "\n[$script_name] $(docker --version)"
-echo -e "[$script_name] Docker buildx version: $(docker buildx version)"
 
-: "${LOCAL_JENKINS_PORT:=8080}"
+
+CONFIG_FILE="$CODE_DIRECTORY/local-jenkins.yaml"
+DEFAULT_PORT="8080"
+
+# Read the port value from the config
+LOCAL_JENKINS_PORT=$(yq '.port' "$CONFIG_FILE")
+
+# Fallback to default if null or empty
+if [[ "$LOCAL_JENKINS_PORT" == "null" || -z "$LOCAL_JENKINS_PORT" ]]; then
+  echo "[$script_name] Port not found in config ($CONFIG_FILE). Using default: $DEFAULT_PORT"
+  LOCAL_JENKINS_PORT="$DEFAULT_PORT"
+else
+  echo "[$script_name] Using config port: $LOCAL_JENKINS_PORT"
+fi
+
+
+echo -e "[$script_name] $(docker --version)"
+echo -e "[$script_name] Docker buildx version: $(docker buildx version)"
 
 LOCAL_JENKINS_DOCKER_SOCKET=$(echo $DOCKER_HOST | sed 's|unix://||')
 LOCAL_JENKINS_DOCKER_BIN=$(which docker)
@@ -46,7 +61,21 @@ docker run -d \
   -v $CODE_DIRECTORY:/mnt/local-project:ro \
   -v ${LOCAL_JENKINS_DOCKER_SOCKET}:/var/run/docker.sock \
   -v ${LOCAL_JENKINS_DOCKER_BIN}:/usr/bin/docker \
-  -e LOCAL_JENKINS_PORT=$LOCAL_JENKINS_PORT \
   ${CONTAINER_NAME}
 
-docker logs -f ${CONTAINER_NAME}
+
+# Stream logs from the Jenkins container, echoing all logs to the terminal if DEBUG is true.
+# Filter the logs in real time for info related to Jenkins startup and entrypoint activity.
+# When Jenkins is fully initialized, print a message with the local access URL.
+
+if [ "$DEBUG" = true ]; then
+    docker logs -f "$CONTAINER_NAME" 2>&1 | tee /dev/tty
+else
+    docker logs -f "$CONTAINER_NAME" 2>&1
+fi | grep --line-buffered -E "Jenkins is fully up and running|entrypoint" | while IFS= read -r line; do
+    if [[ "$line" == *"Jenkins is fully up and running"* ]]; then
+      echo -e "\n[$script_name] Access Local Jenkins at http://localhost:$LOCAL_JENKINS_PORT\n"
+    else
+      echo "$line"
+    fi
+done
