@@ -26,11 +26,25 @@ verbose() {
   fi
 }
 
-
+# cleanup_and_exit - Stops and removes a Docker container, prunes old images, and exits the script.
+#
+# This function performs cleanup operations before terminating the script:
+#   1. Stops the Docker container identified by the environment variable $CONTAINER_NAME.
+#   2. Removes the container along with its associated volumes.
+#   3. Retains only the two most recent Docker images matching $CONTAINER_NAME by tag, removing older ones.
+#   4. Exits the script with a success status (0).
 cleanup_and_exit() {
+
     echo -e "\n[$script_name] Cleaning up and exiting please wait..."
     docker stop $CONTAINER_NAME 1>/dev/null
-    docker rm $CONTAINER_NAME 1>/dev/null
+    docker rm --volumes $CONTAINER_NAME 1>/dev/null
+
+    # Keep only the 2 most recent 'CONTAINER_NAME' images by tag and remove older ones
+    docker images --filter=reference=$CONTAINER_NAME --format '{{.Repository}}:{{.Tag}}' | \
+    sort -r | \
+    awk 'NR>2 { print $1 }' | \
+    xargs -r docker rmi 1>/dev/null
+
     exit 0
 }
 
