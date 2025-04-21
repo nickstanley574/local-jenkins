@@ -110,7 +110,18 @@ else
   VERBOSE_FLAG=""
 fi
 
-docker buildx build --build-context projectsource=${CODE_DIRECTORY} ${VERBOSE_FLAG} ${DEBUG:+--progress=plain} -t "${IMAGE_TAG}" .
+
+# Build the Docker image using Buildx with the following:
+# - Tag the image with a dynamic timestamp-based tag ($IMAGE_TAG)
+# - Set a custom build context named 'projectsource' pointing to $CODE_DIRECTORY
+# - Include verbose output if VERBOSE_FLAG is set
+# - Show detailed build progress if DEBUG is enabled
+# - Use the current directory (.) as the build context root
+docker buildx build -t "${IMAGE_TAG}" \
+  --build-context projectsource=${CODE_DIRECTORY} \
+  ${VERBOSE_FLAG} \
+  ${DEBUG:+--progress=plain} \
+  .
 
 info "Run $CONTAINER_NAME container..."
 
