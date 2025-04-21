@@ -73,10 +73,9 @@ else
 fi
 
 verbose "$(docker --version)"
-debug "Docker info:\n$(docker info)"
 verbose "Docker buildx version: $(docker buildx version)"
 
-LOCAL_JENKINS_DOCKER_SOCKET=$(echo $DOCKER_HOST | sed 's|unix://||')
+LOCAL_JENKINS_DOCKER_SOCKET=$(docker context inspect | jq -r .[0].Endpoints.docker.Host | sed "s^unix://^^")
 LOCAL_JENKINS_DOCKER_BIN=$(which docker)
 
 debug "LOCAL_JENKINS_DOCKER_SOCKET=$LOCAL_JENKINS_DOCKER_SOCKET"
