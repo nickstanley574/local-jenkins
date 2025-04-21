@@ -74,6 +74,8 @@ fi
 
 CONFIG_FILE="$CODE_DIRECTORY/local-jenkins.yaml"
 DEFAULT_PORT="8080"
+IMAGE_TAG="${CONTAINER_NAME}:$(date +"%Y%m%d-%H%M%S")"
+
 
 info "Using config $CONFIG_FILE"
 
@@ -97,7 +99,7 @@ DOCKER_BIN=$(which docker)
 debug "DOCKER_SOCKET=$DOCKER_SOCKET"
 debug "DOCKER_BIN=$DOCKER_BIN"
 
-info "Build local-jenkins image..."
+info "Build $IMAGE_TAG image..."
 
 # Use Docker Buildx to build the local Jenkins image. Sets a custom build context named 'projectsource'
 # to the value of CODE_DIRECTORY, making that directory available to the Dockerfile under that name.
@@ -108,9 +110,9 @@ else
   VERBOSE_FLAG=""
 fi
 
-docker buildx build --build-context projectsource=${CODE_DIRECTORY} ${VERBOSE_FLAG} ${DEBUG:+--progress=plain} -t "${CONTAINER_NAME}" .
+docker buildx build --build-context projectsource=${CODE_DIRECTORY} ${VERBOSE_FLAG} ${DEBUG:+--progress=plain} -t "${IMAGE_TAG}" .
 
-info "Run local-jenkins container..."
+info "Run $CONTAINER_NAME container..."
 
 docker run -d \
   --name ${CONTAINER_NAME} \
@@ -118,7 +120,7 @@ docker run -d \
   -v $CODE_DIRECTORY:/mnt/local-project:ro \
   -v ${DOCKER_SOCKET}:/var/run/docker.sock \
   -v ${DOCKER_BIN}:/usr/bin/docker \
-  ${CONTAINER_NAME}
+  ${IMAGE_TAG}
 
 
 # Stream logs from the Jenkins container, echoing all logs to the terminal if DEBUG is true.
