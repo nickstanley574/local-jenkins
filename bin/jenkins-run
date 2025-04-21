@@ -104,10 +104,15 @@ info "Build $IMAGE_TAG image..."
 # Use Docker Buildx to build the local Jenkins image. Sets a custom build context named 'projectsource'
 # to the value of CODE_DIRECTORY, making that directory available to the Dockerfile under that name.
 # Enables plain progress output if DEBUG is set, and tags the image with CONTAINER_NAME.
+#
+# Create an out_fd variable that points to stdout (FD 1) if VERBOSE is unset to /dev/null
+# https://stackoverflow.com/questions/47552403/conditionally-directing-a-commands-output-to-dev-null-in-bash
 if [ -z "$VERBOSE" ]; then
   VERBOSE_FLAG="--quiet"
+  exec {out_fd}>/dev/null # suppress stdout
 else 
   VERBOSE_FLAG=""
+  out_fd=1 # use FD 1 (stdout)
 fi
 
 
@@ -121,7 +126,7 @@ docker buildx build -t "${IMAGE_TAG}" \
   --build-context projectsource=${CODE_DIRECTORY} \
   ${VERBOSE_FLAG} \
   ${DEBUG:+--progress=plain} \
-  .
+  . >&"$out_fd"
 
 info "Run $CONTAINER_NAME container..."
 
@@ -131,7 +136,8 @@ docker run -d \
   -v $CODE_DIRECTORY:/mnt/local-project:ro \
   -v ${DOCKER_SOCKET}:/var/run/docker.sock \
   -v ${DOCKER_BIN}:/usr/bin/docker \
-  ${IMAGE_TAG}
+  ${IMAGE_TAG} \
+  >&"$out_fd"
 
 
 # Stream logs from the Jenkins container, echoing all logs to the terminal if DEBUG is true.
