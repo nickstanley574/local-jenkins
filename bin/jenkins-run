@@ -75,11 +75,11 @@ fi
 verbose "$(docker --version)"
 verbose "Docker buildx version: $(docker buildx version)"
 
-LOCAL_JENKINS_DOCKER_SOCKET=$(docker context inspect | jq -r .[0].Endpoints.docker.Host | sed "s^unix://^^")
-LOCAL_JENKINS_DOCKER_BIN=$(which docker)
+DOCKER_SOCKET=$(docker context inspect | jq -r .[0].Endpoints.docker.Host | sed "s^unix://^^")
+DOCKER_BIN=$(which docker)
 
-debug "LOCAL_JENKINS_DOCKER_SOCKET=$LOCAL_JENKINS_DOCKER_SOCKET"
-debug "LOCAL_JENKINS_DOCKER_BIN=$LOCAL_JENKINS_DOCKER_BIN"
+debug "DOCKER_SOCKET=$DOCKER_SOCKET"
+debug "DOCKER_BIN=$DOCKER_BIN"
 
 info "Build local-jenkins image..."
 
@@ -100,8 +100,8 @@ docker run -d \
   --name ${CONTAINER_NAME} \
   -p "$LOCAL_JENKINS_PORT:8080" \
   -v $CODE_DIRECTORY:/mnt/local-project:ro \
-  -v ${LOCAL_JENKINS_DOCKER_SOCKET}:/var/run/docker.sock \
-  -v ${LOCAL_JENKINS_DOCKER_BIN}:/usr/bin/docker \
+  -v ${DOCKER_SOCKET}:/var/run/docker.sock \
+  -v ${DOCKER_BIN}:/usr/bin/docker \
   ${CONTAINER_NAME}
 
 
