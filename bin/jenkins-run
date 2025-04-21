@@ -15,7 +15,9 @@ info() {
 }
 
 debug() {
-  echo -e "[$script_name] $1"
+    if [ "$DEBUG" ]; then
+      echo -e "[$script_name] $1"
+    fi
 }
 
 verbose() {
