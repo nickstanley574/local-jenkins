@@ -10,6 +10,21 @@ script_name=$(basename "$0")
 
 CONTAINER_NAME=local-jenkins
 
+info() {
+  echo -e "[$script_name] $1"
+}
+
+debug() {
+  echo -e "[$script_name] $1"
+}
+
+verbose() {
+  if [ "$VERBOSE" ]; then
+    echo -e "[$script_name] $1"
+  fi
+}
+
+
 cleanup_and_exit() {
     echo -e "\n[$script_name] Cleaning up and exiting please wait..."
     docker stop $CONTAINER_NAME 1>/dev/null
@@ -25,55 +40,62 @@ security_options=$(docker info --format '{{.SecurityOptions}}')
 
 if [[ $security_options != *"rootless"* ]]; then
     if [ "$LOCAL_JENKINS_ALLOW_ROOTLESS" = "true" ]; then
-        echo
-        echo "[entrypoint.sh] WARNING: Docker is NOT in rootless mode. Continuing"
-        echo "                because LOCAL_JENKINS_ALLOW_ROOTLESS is true."
-        echo "                See more https://docs.docker.com/engine/security/rootless/"
-        echo
+      echo
+      echo -e "\033[0;33m[$script_name] Notice: Docker is not in rootless mode.\033[0m"
+      echo -e "\033[0;33m[$script_name] LOCAL_JENKINS_ALLOW_ROOTLESS=true — continuing.\033[0m"
+      echo -e "\033[0;33m[$script_name] Docs: https://docs.docker.com/engine/security/rootless/\033[0m"
+      echo
     else
-        echo "[entrypoint.sh] ERROR: Docker rootless mode is not enabled. It is"
-        echo "                recommend to run docker in rootless mode."
-        echo "                See more https://docs.docker.com/engine/security/rootless/"
-        echo "                To override set LOCAL_JENKINS_ALLOW_ROOTLESS=true"
-        exit 1
+      echo "ERROR: Docker rootless mode is not enabled."
+      echo "It is recommend to run docker in rootless mode."
+      echo "See more https://docs.docker.com/engine/security/rootless/"
+      echo "To override set LOCAL_JENKINS_ALLOW_ROOTLESS=true"
+      exit 1
     fi
 else
-    echo "[entrypoint.sh] INFO: docker rootless mode enabled."
+    echo "[$script_name] Docker rootless mode enabled."
 fi
-
 
 CONFIG_FILE="$CODE_DIRECTORY/local-jenkins.yaml"
 DEFAULT_PORT="8080"
+
+info "Using config $CONFIG_FILE"
 
 # Read the port value from the config
 LOCAL_JENKINS_PORT=$(yq '.port' "$CONFIG_FILE")
 
 # Fallback to default if null or empty
 if [[ "$LOCAL_JENKINS_PORT" == "null" || -z "$LOCAL_JENKINS_PORT" ]]; then
-  echo "[$script_name] Port not found in config ($CONFIG_FILE). Using default: $DEFAULT_PORT"
+  verbose "Using default port: $DEFAULT_PORT"
   LOCAL_JENKINS_PORT="$DEFAULT_PORT"
 else
-  echo "[$script_name] Using config port: $LOCAL_JENKINS_PORT"
+  info "Using config port: $LOCAL_JENKINS_PORT"
 fi
 
-
-echo -e "[$script_name] $(docker --version)"
-echo -e "[$script_name] Docker buildx version: $(docker buildx version)"
+verbose "$(docker --version)"
+debug "Docker info:\n$(docker info)"
+verbose "Docker buildx version: $(docker buildx version)"
 
 LOCAL_JENKINS_DOCKER_SOCKET=$(echo $DOCKER_HOST | sed 's|unix://||')
 LOCAL_JENKINS_DOCKER_BIN=$(which docker)
 
-echo -e "[$script_name] LOCAL_JENKINS_DOCKER_SOCKET=$LOCAL_JENKINS_DOCKER_SOCKET"
-echo -e "[$script_name] LOCAL_JENKINS_DOCKER_BIN=$LOCAL_JENKINS_DOCKER_BIN"
+debug "LOCAL_JENKINS_DOCKER_SOCKET=$LOCAL_JENKINS_DOCKER_SOCKET"
+debug "LOCAL_JENKINS_DOCKER_BIN=$LOCAL_JENKINS_DOCKER_BIN"
 
-echo -e "\n[$script_name] Build local-jenkins image..."
+info "Build local-jenkins image..."
 
 # Use Docker Buildx to build the local Jenkins image. Sets a custom build context named 'projectsource'
 # to the value of CODE_DIRECTORY, making that directory available to the Dockerfile under that name.
 # Enables plain progress output if DEBUG is set, and tags the image with CONTAINER_NAME.
-docker buildx build --build-context projectsource=${CODE_DIRECTORY} ${DEBUG:+--progress=plain} -t "${CONTAINER_NAME}" .
+if [ -z "$VERBOSE" ]; then
+  VERBOSE_FLAG="--quiet"
+else 
+  VERBOSE_FLAG=""
+fi
 
-echo -e "[$script_name] Run local-jenkins container..."
+docker buildx build --build-context projectsource=${CODE_DIRECTORY} ${VERBOSE_FLAG} ${DEBUG:+--progress=plain} -t "${CONTAINER_NAME}" .
+
+info "Run local-jenkins container..."
 
 docker run -d \
   --name ${CONTAINER_NAME} \
@@ -88,13 +110,15 @@ docker run -d \
 # Filter the logs in real time for info related to Jenkins startup and entrypoint activity.
 # When Jenkins is fully initialized, print a message with the local access URL.
 
-if [ "$DEBUG" = true ]; then
+if [ "$VERBOSE" ]; then
     docker logs -f "$CONTAINER_NAME" 2>&1 | tee /dev/tty
 else
     docker logs -f "$CONTAINER_NAME" 2>&1
 fi | grep --line-buffered -E "Jenkins is fully up and running|entrypoint" | while IFS= read -r line; do
     if [[ "$line" == *"Jenkins is fully up and running"* ]]; then
-      echo -e "\n[$script_name] Access Local Jenkins at http://localhost:$LOCAL_JENKINS_PORT\n"
+      info "--------------------------------------------------"
+      info "Access Local Jenkins at http://localhost:$LOCAL_JENKINS_PORT"
+      info "--------------------------------------------------"
     else
       echo "$line"
     fi

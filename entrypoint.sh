@@ -34,11 +34,11 @@ done < <(yq -r '.jobs[] | "\(.name) \(.file)"' "$yaml_file")
 # Join files into a single space-separated string for inotifywait
 watch_list="${watched_files[@]}"
 
-echo "[entrypoint.sh] Watching files for changes: $watch_list"
+echo "[entrypoint] Watching files for changes: $watch_list"
 
 while true; do
     changed_file=$(inotifywait -e modify --format '%w%f' $watch_list)
-    echo "[entrypoint.sh] $changed_file updated."
+    echo "[entrypoint] $changed_file updated."
     java -jar jenkins-cli.jar -s http://localhost:8080/ -auth admin:admin reload-jcasc-configuration
 done
 
