@@ -10,23 +10,21 @@ script_name=$(basename "$0")
 
 CONTAINER_NAME=local-jenkins
 
-
-# -------------------------------------------------------------------
-# Logging Functions
-# -------------------------------------------------------------------
-
 info() {
   echo -e "[$script_name] $1"
 }
 
 debug() {
-  [ "$DEBUG" ] && echo -e "[$script_name] $1"
+    if [ "$DEBUG" ]; then
+      echo -e "[$script_name] $1"
+    fi
 }
 
 verbose() {
-  [ "$VERBOSE" ] && echo -e "[$script_name] $1"
+  if [ "$VERBOSE" ]; then
+    echo -e "[$script_name] $1"
+  fi
 }
-
 
 # cleanup_and_exit - Stops and removes a Docker container, prunes old images, and exits the script.
 #
