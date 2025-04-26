@@ -77,6 +77,11 @@ DEFAULT_PORT="8080"
 IMAGE_TAG="${CONTAINER_NAME}:$(date +"%Y%m%d-%H%M%S")"
 
 
+if [ ! -f "$CONFIG_FILE" ]; then
+  echo "Error: Config file '$CONFIG_FILE' not found."
+  exit 1
+fi
+
 info "Using config $CONFIG_FILE"
 
 # Read the port value from the config
