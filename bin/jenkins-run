@@ -1,6 +1,69 @@
 #!/bin/bash
 set -e
-# set -euo pipefail
+
+###############################################################################
+# Script Options and Flags
+###############################################################################
+
+# Default values for flags
+VERBOSE=${VERBOSE:-0}
+DEBUG=${DEBUG:-0}
+QUIET=${QUIET:-0}
+FORCE_BUILD=${FORCE_BUILD:-0}
+ALLOW_DOCKER_ROOTFUL=${ALLOW_DOCKER_ROOTFUL:-0}
+
+show_help() {
+    echo "Usage: $0 [OPTIONS]"
+    echo "Options:"
+    echo "  -h, --help            Show this help message"
+    echo "  -v, --verbose         Enable verbose output"
+    echo "  --debug[=LEVEL]       Set debug level (1 or 2)"
+    echo "  -q, --quiet           Suppress output"
+    echo "  -f, --force-build     Force rebuild of docker image (--no-cahce to build)"
+}
+
+# Parse command-line arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        -v|--verbose)
+            VERBOSE=1
+            ;;
+        --debug)
+            DEBUG=1
+            ;;
+        --debug=1)
+            DEBUG=1
+            ;;
+        --debug=2)
+            DEBUG=2
+            ;;
+        -q|--quiet)
+            echo "-q, --quiet not implemented yet."
+            QUIET=1
+            ;;
+        -f|--force-build)
+            FORCE_BUILD=1
+            ;;
+        --allow-docker-rootful)
+            ALLOW_DOCKER_ROOTFUL=1
+            ;;
+        *)
+            echo "Unknown option: $1"
+            show_help
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+
+if [ $DEBUG -ge 2 ]; then
+  set -x
+fi
 
 ###############################################################################
 # CONSTANTS
@@ -16,6 +79,32 @@ IMAGE_TAG="${CONTAINER_NAME}:$(date +"%Y%m%d-%H%M%S")"
 ###############################################################################
 # LOGGING FUNCTIONS
 ###############################################################################
+
+# Function to check if verbose mode is enabled
+is_verbose() { [ "$VERBOSE" -eq 1 ] }
+
+# Configures output based on the DEBUG and VERBOSE variables.
+# If DEBUG is set, verbose output is enabled by exporting VERBOSE=1.
+# If VERBOSE is unset, the script suppresses output by redirecting it to /dev/null.
+# If VERBOSE is set, the script allows normal output to be printed to stdout.
+
+DEBUG_FLAG=""
+
+if [ $DEBUG -ge 1 ]; then
+  export VERBOSE=1
+  DEBUG_FLAG="--progress=plain"
+fi
+
+# Create an out_fd variable that points to stdout (FD 1) if VERBOSE is unset to /dev/null
+# https://stackoverflow.com/questions/47552403/conditionally-directing-a-commands-output-to-dev-null-in-bash
+if is_verbose; then
+  VERBOSE_FLAG=""
+  out_fd=1 # use FD 1 (stdout)
+else 
+  VERBOSE_FLAG="--quiet"
+  exec {out_fd}>/dev/null # suppress stdout
+fi
+
 
 # Handle different types of logging and output formatting.
 # - info: Outputs standard informational messages, prefixed with the script name.
@@ -36,13 +125,13 @@ info() {
 }
 
 debug() {
-    if [ "$DEBUG" ]; then
-      echo -e "[$script_name] $1"
-    fi
+  if [ $DEBUG -ge 1 ]; then
+    echo -e "[$script_name] $1"
+  fi
 }
 
 verbose() {
-  if [ "$VERBOSE" ]; then
+  if is_verbose; then
     echo -e "[$script_name] $1"
   fi
 }
@@ -54,26 +143,6 @@ warn() {
 error() {
     echo -e "${REDB}[$script_name] $1${NC}"
 }
-
-# Configures output based on the DEBUG and VERBOSE variables.
-# If DEBUG is set, verbose output is enabled by exporting VERBOSE=1.
-# If VERBOSE is unset, the script suppresses output by redirecting it to /dev/null.
-# If VERBOSE is set, the script allows normal output to be printed to stdout.
-
-if [ -n "$DEBUG" ]; then
-  export VERBOSE=1
-fi
-
-# Create an out_fd variable that points to stdout (FD 1) if VERBOSE is unset to /dev/null
-# https://stackoverflow.com/questions/47552403/conditionally-directing-a-commands-output-to-dev-null-in-bash
-if [ -z "$VERBOSE" ]; then
-  VERBOSE_FLAG="--quiet"
-  exec {out_fd}>/dev/null # suppress stdout
-else 
-  VERBOSE_FLAG=""
-  out_fd=1 # use FD 1 (stdout)
-fi
-
 
 ###############################################################################
 # CLEANUP
@@ -88,6 +157,7 @@ cleanup_and_exit() {
   #   3. Retains only the two most recent Docker images matching $CONTAINER_NAME by tag, removing older ones.
   #   4. Exits the script with a success status (0).
 
+  echo 
   info "Cleaning up and exiting please wait..."
   docker stop $CONTAINER_NAME 1>/dev/null
   docker rm --volumes $CONTAINER_NAME 1>/dev/null
@@ -118,7 +188,7 @@ cd "$(dirname "$0")/.."
 info "Using config $CONFIG_FILE"
 
 # Read port from config or fallback to default
-LOCAL_JENKINS_PORT=$(yq '.port // "$DEFAULT_PORT"' "$CONFIG_FILE")
+LOCAL_JENKINS_PORT=$(yq ".port // $DEFAULT_PORT" "$CONFIG_FILE")
 
 # Print info only if using config port (not default)
 [[ "$LOCAL_JENKINS_PORT" != "$DEFAULT_PORT" ]] && info "Using config port: $LOCAL_JENKINS_PORT"
@@ -139,10 +209,10 @@ verbose "Docker buildx version: $(docker buildx version)"
 security_options=$(docker info --format '{{.SecurityOptions}}')
 
 if [[ $security_options != *"rootless"* ]]; then
-    if [ "$LOCAL_JENKINS_ALLOW_ROOTLESS" = "true" ]; then
+    if [ $ALLOW_DOCKER_ROOTFUL -ge 1 ]; then
       warn
       warn "Notice: Docker is not in rootless mode.\033[0m"
-      warn "LOCAL_JENKINS_ALLOW_ROOTLESS=true — continuing.\033[0m"
+      warn "--allow-docker-rootful or ALLOW_DOCKER_ROOTFUL=1 — continuing.\033[0m"
       warn "Docs: https://docs.docker.com/engine/security/rootless/\033[0m"
       warn
     else
@@ -150,7 +220,7 @@ if [[ $security_options != *"rootless"* ]]; then
       error "ERROR: Docker rootless mode is not enabled."
       error "It is recommend to run docker in rootless mode."
       error "See https://docs.docker.com/engine/security/rootless/"
-      error "To override set LOCAL_JENKINS_ALLOW_ROOTLESS=true"
+      error "To override set --allow-docker-rootful or ALLOW_DOCKER_ROOTFUL=1"
       error
       exit 1
     fi
@@ -174,17 +244,17 @@ info "Build $IMAGE_TAG image..."
 docker buildx build -t "${IMAGE_TAG}" \
   --build-context projectsource=${CODE_DIRECTORY} \
   ${VERBOSE_FLAG} \
-  ${DEBUG:+--progress=plain} \
+  ${DEBUG_FLAG} \
   . >&"$out_fd"
 
 
 # Executes the `docker run` command with the following options:
 # --detach: Run the container in detached mode (in the background).
 # --name: Assign the container the name from $CONTAINER_NAME.
-# --port: Bind the container's port 8080 to the local machine's $LOCAL_JENKINS_PORT.
+# --publish: Bind the container's port 8080 to the local machine's $LOCAL_JENKINS_PORT.
 # --volume: Mount various volumes into the container:
-#   - Mounts the local $CODE_DIRECTORY to /mnt/local-project in the container (read-only).
-#   - Mounts the Docker socket and Docker binary to enable Docker-in-Docker functionality.
+#   Mounts the local $CODE_DIRECTORY to /mnt/local-project in the container (read-only).
+#   Mounts the Docker socket and Docker binary to enable Docker-in-Docker functionality.
 # $IMAGE_TAG: Specifies the Docker image to run, determined by the IMAGE_TAG variable.
 # The output of the `docker run` command is redirected to the $out_fd (stdout or /dev/null).
 
@@ -192,7 +262,7 @@ info "Run $CONTAINER_NAME container..."
 
 docker run -d \
   --name ${CONTAINER_NAME} \
-  --port "$LOCAL_JENKINS_PORT:8080" \
+  --publish "$LOCAL_JENKINS_PORT:8080" \
   --volume $CODE_DIRECTORY:/mnt/local-project:ro \
   --volume ${DOCKER_SOCKET}:/var/run/docker.sock \
   --volume ${DOCKER_BIN}:/usr/bin/docker \
@@ -204,7 +274,7 @@ docker run -d \
 # Filter the logs in real time for info related to Jenkins startup and entrypoint activity.
 # When Jenkins is fully initialized, print a message with the local access URL.
 
-if [ "$VERBOSE" ]; then
+if is_verbose; then
     docker logs -f "$CONTAINER_NAME" 2>&1 | tee /dev/tty
 else
     docker logs -f "$CONTAINER_NAME" 2>&1
