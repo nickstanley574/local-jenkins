@@ -60,11 +60,6 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
-
-if [ $DEBUG -ge 2 ]; then
-  set -x
-fi
-
 ###############################################################################
 # CONSTANTS
 ###############################################################################
@@ -79,6 +74,9 @@ IMAGE_TAG="${CONTAINER_NAME}:$(date +"%Y%m%d-%H%M%S")"
 ###############################################################################
 # LOGGING FUNCTIONS
 ###############################################################################
+
+# Enable shell debug mode if DEBUG level is 2 or higher
+[ "$DEBUG" -ge 2 ] && set -x
 
 # Function to check if verbose mode is enabled
 is_verbose() { [ "$VERBOSE" -eq 1 ] }
