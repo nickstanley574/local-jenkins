@@ -1,14 +1,35 @@
 #!/bin/bash
 set -e
+# set -euo pipefail
+
+###############################################################################
+# CONSTANTS
+###############################################################################
+
+DEFAULT_PORT="8080"
+CONTAINER_NAME=local-jenkins
 
 CODE_DIRECTORY=$PWD
+CONFIG_FILE="$CODE_DIRECTORY/local-jenkins.yaml"
+IMAGE_TAG="${CONTAINER_NAME}:$(date +"%Y%m%d-%H%M%S")"
 
-cd "$(dirname "$0")"
-cd ..
+###############################################################################
+# LOGGING FUNCTIONS
+###############################################################################
+
+# Handle different types of logging and output formatting.
+# - info: Outputs standard informational messages, prefixed with the script name.
+# - debug: Outputs debug messages if the DEBUG environment variable is set.
+# - verbose: Outputs verbose messages if the VERBOSE environment variable is set.
+# - warn: Outputs warning messages, highlighted in yellow.
+# - error: Outputs error messages, highlighted in bold red.
+# Color codes are defined for red, yellow, and no color (NC) to format the outputs.
 
 script_name=$(basename "$0")
 
-CONTAINER_NAME=local-jenkins
+REDB='\033[1;31m'   # Bold Red
+YELLOW='\033[0;33m' # Yellow
+NC='\033[0m'        # No Color
 
 info() {
   echo -e "[$script_name] $1"
@@ -26,90 +47,23 @@ verbose() {
   fi
 }
 
-# cleanup_and_exit - Stops and removes a Docker container, prunes old images, and exits the script.
-#
-# This function performs cleanup operations before terminating the script:
-#   1. Stops the Docker container identified by the environment variable $CONTAINER_NAME.
-#   2. Removes the container along with its associated volumes.
-#   3. Retains only the two most recent Docker images matching $CONTAINER_NAME by tag, removing older ones.
-#   4. Exits the script with a success status (0).
-cleanup_and_exit() {
-
-    echo -e "\n[$script_name] Cleaning up and exiting please wait..."
-    docker stop $CONTAINER_NAME 1>/dev/null
-    docker rm --volumes $CONTAINER_NAME 1>/dev/null
-
-    # Keep only the 2 most recent 'CONTAINER_NAME' images by tag and remove older ones
-    docker images --filter=reference=$CONTAINER_NAME --format '{{.Repository}}:{{.Tag}}' | \
-    sort -r | \
-    awk 'NR>2 { print $1 }' | \
-    xargs -r docker rmi 1>/dev/null
-
-    exit 0
+warn() {
+  echo -e "${YELLOW}[$script_name] $1\033[0m"
 }
 
-# Trap interrupt signal (Ctrl+C) and call cleanup_and_exit function
-trap 'cleanup_and_exit' INT
+error() {
+    echo -e "${REDB}[$script_name] $1${NC}"
+}
 
+# Configures output based on the DEBUG and VERBOSE variables.
+# If DEBUG is set, verbose output is enabled by exporting VERBOSE=1.
+# If VERBOSE is unset, the script suppresses output by redirecting it to /dev/null.
+# If VERBOSE is set, the script allows normal output to be printed to stdout.
 
-security_options=$(docker info --format '{{.SecurityOptions}}')
-
-if [[ $security_options != *"rootless"* ]]; then
-    if [ "$LOCAL_JENKINS_ALLOW_ROOTLESS" = "true" ]; then
-      echo
-      echo -e "\033[0;33m[$script_name] Notice: Docker is not in rootless mode.\033[0m"
-      echo -e "\033[0;33m[$script_name] LOCAL_JENKINS_ALLOW_ROOTLESS=true — continuing.\033[0m"
-      echo -e "\033[0;33m[$script_name] Docs: https://docs.docker.com/engine/security/rootless/\033[0m"
-      echo
-    else
-      echo "ERROR: Docker rootless mode is not enabled."
-      echo "It is recommend to run docker in rootless mode."
-      echo "See more https://docs.docker.com/engine/security/rootless/"
-      echo "To override set LOCAL_JENKINS_ALLOW_ROOTLESS=true"
-      exit 1
-    fi
-else
-    echo "[$script_name] Docker rootless mode enabled."
+if [ -n "$DEBUG" ]; then
+  export VERBOSE=1
 fi
 
-CONFIG_FILE="$CODE_DIRECTORY/local-jenkins.yaml"
-DEFAULT_PORT="8080"
-IMAGE_TAG="${CONTAINER_NAME}:$(date +"%Y%m%d-%H%M%S")"
-
-
-if [ ! -f "$CONFIG_FILE" ]; then
-  echo "Error: Config file '$CONFIG_FILE' not found."
-  exit 1
-fi
-
-info "Using config $CONFIG_FILE"
-
-# Read the port value from the config
-LOCAL_JENKINS_PORT=$(yq '.port' "$CONFIG_FILE")
-
-# Fallback to default if null or empty
-if [[ "$LOCAL_JENKINS_PORT" == "null" || -z "$LOCAL_JENKINS_PORT" ]]; then
-  verbose "Using default port: $DEFAULT_PORT"
-  LOCAL_JENKINS_PORT="$DEFAULT_PORT"
-else
-  info "Using config port: $LOCAL_JENKINS_PORT"
-fi
-
-verbose "$(docker --version)"
-verbose "Docker buildx version: $(docker buildx version)"
-
-DOCKER_SOCKET=$(docker context inspect | jq -r .[0].Endpoints.docker.Host | sed "s^unix://^^")
-DOCKER_BIN=$(which docker)
-
-debug "DOCKER_SOCKET=$DOCKER_SOCKET"
-debug "DOCKER_BIN=$DOCKER_BIN"
-
-info "Build $IMAGE_TAG image..."
-
-# Use Docker Buildx to build the local Jenkins image. Sets a custom build context named 'projectsource'
-# to the value of CODE_DIRECTORY, making that directory available to the Dockerfile under that name.
-# Enables plain progress output if DEBUG is set, and tags the image with CONTAINER_NAME.
-#
 # Create an out_fd variable that points to stdout (FD 1) if VERBOSE is unset to /dev/null
 # https://stackoverflow.com/questions/47552403/conditionally-directing-a-commands-output-to-dev-null-in-bash
 if [ -z "$VERBOSE" ]; then
@@ -121,26 +75,127 @@ else
 fi
 
 
+###############################################################################
+# CLEANUP
+###############################################################################
+
+cleanup_and_exit() {
+  # Stops and removes a Docker container, prunes old images, and exits the scrilspt.
+  #
+  # This function performs cleanup operations before terminating the script:
+  #   1. Stops the Docker container identified by the environment variable $CONTAINER_NAME.
+  #   2. Removes the container along with its associated volumes.
+  #   3. Retains only the two most recent Docker images matching $CONTAINER_NAME by tag, removing older ones.
+  #   4. Exits the script with a success status (0).
+
+  info "Cleaning up and exiting please wait..."
+  docker stop $CONTAINER_NAME 1>/dev/null
+  docker rm --volumes $CONTAINER_NAME 1>/dev/null
+
+  # Keep only the 2 most recent 'CONTAINER_NAME' images by tag and remove older ones
+  docker images --filter=reference=$CONTAINER_NAME --format '{{.Repository}}:{{.Tag}}' | \
+  sort -r | \
+  awk 'NR>2 { print $1 }' | \
+  xargs -r docker rmi 1>/dev/null
+
+  exit 0
+}
+
+# Set up a trap to catch the interrupt signal (Ctrl+C or SIGINT).
+# When the signal is received, the cleanup_and_exit function will be called to handle
+# any necessary cleanup tasks before the script exits.
+trap 'cleanup_and_exit' INT
+
+###############################################################################
+# CONFIG VALIDATION AND DOCKER DISCOVERY
+###############################################################################
+
+# Move to project root (one level up from script directory)
+cd "$(dirname "$0")/.."
+
+# Ensure the config file exists, or exit with an error
+[ -f "$CONFIG_FILE" ] || { echo "Error: Config file '$CONFIG_FILE' not found."; exit 1; }
+info "Using config $CONFIG_FILE"
+
+# Read port from config or fallback to default
+LOCAL_JENKINS_PORT=$(yq '.port // "$DEFAULT_PORT"' "$CONFIG_FILE")
+
+# Print info only if using config port (not default)
+[[ "$LOCAL_JENKINS_PORT" != "$DEFAULT_PORT" ]] && info "Using config port: $LOCAL_JENKINS_PORT"
+
+DOCKER_BIN=$(which docker)
+debug "DOCKER_BIN=$DOCKER_BIN"
+
+DOCKER_SOCKET=$(docker context inspect | jq -r .[0].Endpoints.docker.Host | sed "s^unix://^^")
+debug "DOCKER_SOCKET=$DOCKER_SOCKET"
+
+verbose "$(docker --version)"
+verbose "Docker buildx version: $(docker buildx version)"
+
+###############################################################################
+# DOCKER ROOTLESS CHECK
+###############################################################################
+
+security_options=$(docker info --format '{{.SecurityOptions}}')
+
+if [[ $security_options != *"rootless"* ]]; then
+    if [ "$LOCAL_JENKINS_ALLOW_ROOTLESS" = "true" ]; then
+      warn
+      warn "Notice: Docker is not in rootless mode.\033[0m"
+      warn "LOCAL_JENKINS_ALLOW_ROOTLESS=true — continuing.\033[0m"
+      warn "Docs: https://docs.docker.com/engine/security/rootless/\033[0m"
+      warn
+    else
+      error
+      error "ERROR: Docker rootless mode is not enabled."
+      error "It is recommend to run docker in rootless mode."
+      error "See https://docs.docker.com/engine/security/rootless/"
+      error "To override set LOCAL_JENKINS_ALLOW_ROOTLESS=true"
+      error
+      exit 1
+    fi
+else
+    info "Docker rootless mode enabled."
+fi
+
+###############################################################################
+# BUILD DOCKER IMAGE AND RUN CONTAINER
+###############################################################################
+
 # Build the Docker image using Buildx with the following:
 # - Tag the image with a dynamic timestamp-based tag ($IMAGE_TAG)
 # - Set a custom build context named 'projectsource' pointing to $CODE_DIRECTORY
 # - Include verbose output if VERBOSE_FLAG is set
 # - Show detailed build progress if DEBUG is enabled
-# - Use the current directory (.) as the build context root
+# - Use the current directory . as the build root context
+
+info "Build $IMAGE_TAG image..."
+
 docker buildx build -t "${IMAGE_TAG}" \
   --build-context projectsource=${CODE_DIRECTORY} \
   ${VERBOSE_FLAG} \
   ${DEBUG:+--progress=plain} \
   . >&"$out_fd"
 
+
+# Executes the `docker run` command with the following options:
+# --detach: Run the container in detached mode (in the background).
+# --name: Assign the container the name from $CONTAINER_NAME.
+# --port: Bind the container's port 8080 to the local machine's $LOCAL_JENKINS_PORT.
+# --volume: Mount various volumes into the container:
+#   - Mounts the local $CODE_DIRECTORY to /mnt/local-project in the container (read-only).
+#   - Mounts the Docker socket and Docker binary to enable Docker-in-Docker functionality.
+# $IMAGE_TAG: Specifies the Docker image to run, determined by the IMAGE_TAG variable.
+# The output of the `docker run` command is redirected to the $out_fd (stdout or /dev/null).
+
 info "Run $CONTAINER_NAME container..."
 
 docker run -d \
   --name ${CONTAINER_NAME} \
-  -p "$LOCAL_JENKINS_PORT:8080" \
-  -v $CODE_DIRECTORY:/mnt/local-project:ro \
-  -v ${DOCKER_SOCKET}:/var/run/docker.sock \
-  -v ${DOCKER_BIN}:/usr/bin/docker \
+  --port "$LOCAL_JENKINS_PORT:8080" \
+  --volume $CODE_DIRECTORY:/mnt/local-project:ro \
+  --volume ${DOCKER_SOCKET}:/var/run/docker.sock \
+  --volume ${DOCKER_BIN}:/usr/bin/docker \
   ${IMAGE_TAG} \
   >&"$out_fd"
 
@@ -155,9 +210,9 @@ else
     docker logs -f "$CONTAINER_NAME" 2>&1
 fi | grep --line-buffered -E "Jenkins is fully up and running|entrypoint" | while IFS= read -r line; do
     if [[ "$line" == *"Jenkins is fully up and running"* ]]; then
-      info "--------------------------------------------------"
+      info "-----------------------------------------------------"
       info "Access Local Jenkins at http://localhost:$LOCAL_JENKINS_PORT"
-      info "--------------------------------------------------"
+      info "-----------------------------------------------------"
     else
       echo "$line"
     fi
