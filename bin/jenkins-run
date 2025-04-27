@@ -81,10 +81,10 @@ IMAGE_TAG="${CONTAINER_NAME}:$(date +"%Y%m%d-%H%M%S")"
 ###############################################################################
 
 # Enable shell debug mode if DEBUG level is 2 or higher
-[ "$DEBUG" -ge 2 ] && set -x
+[ $DEBUG -ge 2 ] && set -x
 
 # Function to check if verbose mode is enabled
-is_verbose() { [ "$VERBOSE" -eq 1 ] }
+is_verbose() { [[ "$VERBOSE" -eq 1 ]] }
 
 # Configures output based on the DEBUG and VERBOSE variables.
 # If DEBUG is set, verbose output is enabled by exporting VERBOSE=1.
