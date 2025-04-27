@@ -242,12 +242,19 @@ fi
 # - Show detailed build progress if DEBUG is enabled
 # - Use the current directory . as the build root context
 
+FORCE_BUILD_FLAG=""
+if [ $FORCE_BUILD -ge 1 ]; then
+  info "Rebuilding the local Jenkins Docker image without cache due to --force-build."
+  FORCE_BUILD_FLAG="--no-cache"
+fi
+
 info "Build $IMAGE_TAG image..."
 
 docker buildx build -t "${IMAGE_TAG}" \
   --build-context projectsource=${CODE_DIRECTORY} \
   ${VERBOSE_FLAG} \
   ${DEBUG_FLAG} \
+  ${FORCE_BUILD_FLAG} \
   . >&"$out_fd"
 
 
