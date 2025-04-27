@@ -2,7 +2,12 @@
 set -e
 
 ###############################################################################
-# Script Options and Flags
+# Local Jenkins Development Environment Management Script
+#
+# This script automates the setup of a local Jenkins environment inside a
+# Docker container, with support for configurable ports, verbose/debug logging,
+# Docker rootless checks, and container/image lifecycle management.
+#
 ###############################################################################
 
 # Default values for flags
