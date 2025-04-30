@@ -76,6 +76,8 @@ CODE_DIRECTORY=$PWD
 CONFIG_FILE="$CODE_DIRECTORY/local-jenkins.yaml"
 IMAGE_TAG="${CONTAINER_NAME}:$(date +"%Y%m%d-%H%M%S")"
 
+JENKINS_HOST_DATA=${CODE_DIRECTORY}/.local-jenkins
+
 ###############################################################################
 # LOGGING FUNCTIONS
 ###############################################################################
@@ -263,6 +265,34 @@ docker buildx build -t "${IMAGE_TAG}" \
   . >&"$out_fd"
 
 
+
+# Check if persistent_storage key exists and its value
+persistent_storage_value=$(yq '.persistent_storage // null' "$CONFIG_FILE")
+
+# If persistent_storage key is found and its value is true
+if [[ "$persistent_storage_value" == "true" ]]; then
+  notice "Setting persistent_storage is true. Jenkins data will prersist restarts and rebuilds."
+  notice "Jenkins data will be stored in $JENKINS_HOST_DATA"
+  PERSISTENT_VOLUME="--volume $CODE_DIRECTORY/.local-jenkins:/var/jenkins_home:rw"
+else
+  PERSISTENT_VOLUME=""
+  if [[ -d "$JENKINS_HOST_DATA" ]]; then
+    warn "WARN: Local Jenkins data exists at $JENKINS_HOST_DATA,"
+    warn "      but is not being used due to persistent_storage being false."
+  fi
+fi
+
+
+# Ensure that if local Jenkins data exists and the code directory is a Git repo,
+# then .local-jenkins/ must be listed in .gitignore to prevent accidental commits.
+if [[ -d "$JENKINS_HOST_DATA" && -d "$CODE_DIRECTORY/.git" ]] && \
+   ! grep -Fxq ".local-jenkins/" "$CODE_DIRECTORY/.gitignore"; then
+  error "ERROR: .local-jenkins/ is not in .gitignore in the project at $CODE_DIRECTORY."
+  error "Make sure to add it to avoid committing local Jenkins data."
+  exit 1
+fi
+
+
 # Executes the `docker run` command with the following options:
 # --detach: Run the container in detached mode (in the background).
 # --name: Assign the container the name from $CONTAINER_NAME.
@@ -278,9 +308,10 @@ info "Run $CONTAINER_NAME container..."
 docker run -d \
   --name ${CONTAINER_NAME} \
   --publish "$LOCAL_JENKINS_PORT:8080" \
-  --volume $CODE_DIRECTORY:/mnt/local-project:ro \
   --volume ${DOCKER_SOCKET}:/var/run/docker.sock \
   --volume ${DOCKER_BIN}:/usr/bin/docker \
+  --volume $CODE_DIRECTORY:/mnt/local-project:ro \
+  $PERSISTENT_VOLUME \
   ${IMAGE_TAG} \
   >&"$out_fd"
 

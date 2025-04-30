@@ -12,6 +12,7 @@ RUN apt-get update && \
     yq
 
 RUN echo "jenkins ALL=(ALL) NOPASSWD: /usr/bin/setfacl -m u\\:jenkins\\:rw- /var/run/docker.sock" >> /etc/sudoers
+RUN echo "jenkins ALL=(ALL) NOPASSWD: /usr/bin/setfacl -Rm u\\:jenkins\\:rwx- -Rdm u\\:jenkins\\:rwx- /var/jenkins_home/" >> /etc/sudoers
 
 USER jenkins
 

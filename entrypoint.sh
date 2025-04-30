@@ -25,6 +25,9 @@ LOCAL_JENKINS_YAML="/tmp/local-jenkins.yaml"
 # Grant the 'jenkins' user read and write access to the Docker socket for running Docker commands
 sudo /usr/bin/setfacl -m u:jenkins:rw- /var/run/docker.sock
 
+# https://serverfault.com/questions/444867/linux-setfacl-set-all-current-future-files-directories-in-parent-directory-to
+sudo /usr/bin/setfacl -Rm u:jenkins:rwx- -Rdm u:jenkins:rwx- /var/jenkins_home/
+
 # Run Jenkins in the background
 /usr/local/bin/jenkins.sh &
 
