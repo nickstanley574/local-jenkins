@@ -121,6 +121,7 @@ script_name=$(basename "$0")
 
 REDB='\033[1;31m'   # Bold Red
 YELLOW='\033[0;33m' # Yellow
+CYAN='\033[0;36m'
 NC='\033[0m'        # No Color
 
 info() {
@@ -137,6 +138,10 @@ verbose() {
   if is_verbose; then
     echo -e "[$script_name] $1"
   fi
+}
+
+notice() {
+  echo -e "${CYAN}[$script_name] $1\033[0m"
 }
 
 warn() {
