@@ -18,13 +18,14 @@ FORCE_BUILD=${FORCE_BUILD:-0}
 ALLOW_DOCKER_ROOTFUL=${ALLOW_DOCKER_ROOTFUL:-0}
 
 show_help() {
-    echo "Usage: $0 [OPTIONS]"
+    echo "Usage: jenkins-run [OPTIONS]"
     echo "Options:"
-    echo "  -h, --help            Show this help message"
-    echo "  -v, --verbose         Enable verbose output"
-    echo "  --debug[=LEVEL]       Set debug level (1 or 2)"
-    echo "  -q, --quiet           Suppress output"
-    echo "  -f, --force-build     Force rebuild of docker image (--no-cahce to build)"
+    echo "  -h, --help                Show this help message"
+    echo "  -v, --verbose             Enable verbose output"
+    echo "  --debug[=LEVEL]           Set the debug level (1 or 2)."
+    echo "  -q, --quiet               Suppress output (not yet implemented)"
+    echo "  -f, --force-build         Force a rebuild of the Jenkins image (use --no-cache)"
+    echo "  --allow-docker-rootful    Allow process to run in Docker root mode (use with caution)"
 }
 
 # Parse command-line arguments
