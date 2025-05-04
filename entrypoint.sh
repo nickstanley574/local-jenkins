@@ -58,26 +58,51 @@ done
 watch_list=$(yq -r '.jobs[].file' "$LOCAL_JENKINS_YAML" | sed 's|^|/mnt/local-project/|' | xargs)
 
 # Print the list of files that will be watched
-echo "[entrypoint] Watching files for changes: $watch_list"
+echo "[entrypoint] Watching Jenkinsfile for changes: $watch_list"
 
 # This downloads the Jenkins CLI tool and uses it to reload the Jenkins
 # Configuration as Code (JCasC) settings. It monitors the watch list files
 # for changes using inotifywait, and reloads the JCasC when a change is detected.
-
-cd /tmp
-curl -Os http://localhost:8080/jnlpJars/jenkins-cli.jar 
+curl -o /tmp/jenkins-cli.jar http://localhost:8080/jnlpJars/jenkins-cli.jar
 
 reload_jcasc() {
-  java -jar jenkins-cli.jar -s http://localhost:8080/ -auth admin:admin reload-jcasc-configuration
+  java -jar /tmp/jenkins-cli.jar -s http://localhost:8080/ -auth admin:admin reload-jcasc-configuration
 }
+
+# Initialize JCasC config and JKL shared lib defined in jenkins.yaml with file://. 
+# The shared lib must be a Git repo; init the repo and commit all changes for
+# Jenkins to apply updates.
 
 reload_jcasc
 
-# Use inotifywait to monitor the Jenkinsfiles and reload the jcasc file on a change
+cd /var/lib/jenkins/jkl-shared-lib
+cp /mnt/jkl-shared-lib/* /var/lib/jenkins/jkl-shared-lib/vars/
+git init --initial-branch=master
+git add .
+git config user.email "local-jenkins@dev.null"
+git config user.name "Local Jenkins"
+git commit -m "Auto Initial Commit"
+
+# Use inotifywait to monitor Jenkinsfiles and shared lib; sync lib
+# changes and commit, reload JCasC otherwise.
 while true; do
-    changed_file=$(inotifywait -e modify --format '%w%f' $watch_list)
+
+    changed_file=$(
+        inotifywait \
+        -e modify --format '%w%f' $watch_list \
+        -e create -e modify -e delete -e move --format '%w%f' /mnt/jkl-shared-lib/
+    )
+
     echo "[entrypoint] $changed_file updated."
-    reload_jcasc
+
+    if [[ "$changed_file" == *"/mnt/jkl-shared-lib/"* ]]; then
+        cp /mnt/jkl-shared-lib/* /var/lib/jenkins/jkl-shared-lib/vars/
+        git add .
+        git commit -m "Auto Local Jenkins Commit"
+    else
+        reload_jcasc
+    fi
+
 done
 
 # Wait for Jenkins to finish

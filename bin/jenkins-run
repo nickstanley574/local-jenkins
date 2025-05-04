@@ -312,6 +312,7 @@ docker run -d \
   --volume ${DOCKER_SOCKET}:/var/run/docker.sock \
   --volume ${DOCKER_BIN}:/usr/bin/docker \
   --volume $CODE_DIRECTORY:/mnt/local-project:ro \
+  --volume ./vars:/mnt/jkl-shared-lib:ro \
   $PERSISTENT_VOLUME \
   ${IMAGE_TAG} \
   >&"$out_fd"

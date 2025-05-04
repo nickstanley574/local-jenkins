@@ -13,5 +13,24 @@ jenkins:
   markupFormatter:
       rawHtml:
         disableSyntaxHighlighting: false
+  globalNodeProperties:
+    - envVars:
+        env:
+          - key: "IS_LOCAL_JENKINS"
+            value: true
+
+unclassified:
+  globalLibraries:
+    libraries:
+      - name: jkl-shared-lib
+        defaultVersion: "master"
+        allowVersionOverride: false
+        implicit: true
+        retriever:
+          modernSCM:
+            scm:
+              git:
+                remote: "file:///var/lib/jenkins/jkl-shared-lib"
+                credentialsId: ""
 
 jobs: []
