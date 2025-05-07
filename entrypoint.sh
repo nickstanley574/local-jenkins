@@ -98,7 +98,7 @@ while true; do
     if [[ "$changed_file" == *"/mnt/jkl-shared-lib/"* ]]; then
         cp /mnt/jkl-shared-lib/* /var/lib/jenkins/jkl-shared-lib/vars/
         git add .
-        git commit -m "Auto Local Jenkins Commit"
+        git commit --allow-empty -m "Auto Local Jenkins Commit"
     else
         reload_jcasc
     fi
