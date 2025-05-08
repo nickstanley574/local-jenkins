@@ -35,5 +35,6 @@ RUN jenkins-plugin-cli --plugins --verbose -f /tmp/plugins.txt 2>&1 | tee
 RUN mkdir -p /var/lib/jenkins/jkl-shared-lib/vars
 
 COPY entrypoint.sh .
+COPY output.sh .
 
 ENTRYPOINT ["./entrypoint.sh"]

@@ -19,6 +19,8 @@
 
 set -e
 
+source ./output.sh
+
 # Local Jenkins config file to read from local project
 LOCAL_JENKINS_YAML="/tmp/local-jenkins.yaml"
 
@@ -38,14 +40,14 @@ jenkins_pid=$!
 # It gives Jenkins a short time to start and then retries with a sleep  
 # between each attempt. If Jenkins doesn't respond with a 200 OK in max
 # attempts,  the script exits with an error message.
-sleep 5
+sleep 4
 attempts=0
 max_attempts=8
 while ! curl -s --head http://localhost:8080/ | grep -q "HTTP/1.1 200 OK"; do
     attempts=$((attempts + 1))
-    echo "[entrypoint] Jenkins is not online. Retrying $attempts/$max_attempts"
+    info "Jenkins is not online. Retrying $attempts/$max_attempts ..."
     if [ "$attempts" -ge "$max_attempts" ]; then
-        echo "[entrypoint] ERROR: Jenkins is not online after $max_attempts attempts."
+        quiet "ERROR: Jenkins is not online after $max_attempts attempts."
         exit 1
     fi
     sleep 3
@@ -58,7 +60,7 @@ done
 watch_list=$(yq -r '.jobs[].file' "$LOCAL_JENKINS_YAML" | sed 's|^|/mnt/local-project/|' | xargs)
 
 # Print the list of files that will be watched
-echo "[entrypoint] Watching Jenkinsfile for changes: $watch_list"
+info "Watching Jenkinsfile for changes: $watch_list"
 
 # This downloads the Jenkins CLI tool and uses it to reload the Jenkins
 # Configuration as Code (JCasC) settings. It monitors the watch list files
@@ -66,6 +68,7 @@ echo "[entrypoint] Watching Jenkinsfile for changes: $watch_list"
 curl -o /tmp/jenkins-cli.jar http://localhost:8080/jnlpJars/jenkins-cli.jar
 
 reload_jcasc() {
+  info "Triggering JCASC repload"
   java -jar /tmp/jenkins-cli.jar -s http://localhost:8080/ -auth admin:admin reload-jcasc-configuration
 }
 
@@ -93,9 +96,10 @@ while true; do
         -e create -e modify -e delete -e move --format '%w%f' /mnt/jkl-shared-lib/
     )
 
-    echo "[entrypoint] $changed_file updated."
+    quiet "$changed_file updated."
 
     if [[ "$changed_file" == *"/mnt/jkl-shared-lib/"* ]]; then
+        info "Triggering jkl-shared-lib reload"
         cp /mnt/jkl-shared-lib/* /var/lib/jenkins/jkl-shared-lib/vars/
         git add .
         git commit --allow-empty -m "Auto Local Jenkins Commit"

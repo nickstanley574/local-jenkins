@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+source $(dirname "$0")/../output.sh
+
 ###############################################################################
 # Local Jenkins Development Environment Management Script
 #
@@ -48,7 +50,6 @@ while [[ $# -gt 0 ]]; do
             DEBUG=2
             ;;
         -q|--quiet)
-            echo "-q, --quiet not implemented yet."
             QUIET=1
             ;;
         -f|--force-build)
@@ -89,6 +90,8 @@ JENKINS_HOST_DATA=${CODE_DIRECTORY}/.local-jenkins
 # Function to check if verbose mode is enabled
 is_verbose() { [[ "$VERBOSE" -eq 1 ]] }
 
+is_quiet() { [[ "$QUIET" -eq 1 ]] }
+
 # Configures output based on the DEBUG and VERBOSE variables.
 # If DEBUG is set, verbose output is enabled by exporting VERBOSE=1.
 # If VERBOSE is unset, the script suppresses output by redirecting it to /dev/null.
@@ -111,50 +114,6 @@ else
   exec {out_fd}>/dev/null # suppress stdout
 fi
 
-
-# Handle different types of logging and output formatting.
-# - info: Outputs standard informational messages, prefixed with the script name.
-# - debug: Outputs debug messages if the DEBUG environment variable is set.
-# - verbose: Outputs verbose messages if the VERBOSE environment variable is set.
-# - warn: Outputs warning messages, highlighted in yellow.
-# - error: Outputs error messages, highlighted in bold red.
-# Color codes are defined for red, yellow, and no color (NC) to format the outputs.
-
-script_name=$(basename "$0")
-
-REDB='\033[1;31m'   # Bold Red
-YELLOW='\033[0;33m' # Yellow
-CYAN='\033[0;36m'
-NC='\033[0m'        # No Color
-
-info() {
-  echo -e "[$script_name] $1"
-}
-
-debug() {
-  if [ $DEBUG -ge 1 ]; then
-    echo -e "[$script_name] $1"
-  fi
-}
-
-verbose() {
-  if is_verbose; then
-    echo -e "[$script_name] $1"
-  fi
-}
-
-notice() {
-  echo -e "${CYAN}[$script_name] $1\033[0m"
-}
-
-warn() {
-  echo -e "${YELLOW}[$script_name] $1\033[0m"
-}
-
-error() {
-    echo -e "${REDB}[$script_name] $1${NC}"
-}
-
 ###############################################################################
 # CLEANUP
 ###############################################################################
@@ -169,7 +128,7 @@ cleanup_and_exit() {
   #   4. Exits the script with a success status (0).
 
   echo 
-  info "Cleaning up and exiting please wait..."
+  quiet "Cleaning up and exiting please wait..."
   docker stop $CONTAINER_NAME 1>/dev/null
   docker rm --volumes $CONTAINER_NAME 1>/dev/null
 
@@ -196,7 +155,7 @@ cd "$(dirname "$0")/.."
 
 # Ensure the config file exists, or exit with an error
 [ -f "$CONFIG_FILE" ] || { echo "Error: Config file '$CONFIG_FILE' not found."; exit 1; }
-info "Using config $CONFIG_FILE"
+quiet "Using config $CONFIG_FILE"
 
 # Read port from config or fallback to default
 LOCAL_JENKINS_PORT=$(yq ".port // $DEFAULT_PORT" "$CONFIG_FILE")
@@ -272,8 +231,8 @@ persistent_storage_value=$(yq '.persistent_storage // null' "$CONFIG_FILE")
 
 # If persistent_storage key is found and its value is true
 if [[ "$persistent_storage_value" == "true" ]]; then
-  notice "Setting persistent_storage is true. Jenkins data will prersist restarts and rebuilds."
-  notice "Jenkins data will be stored in $JENKINS_HOST_DATA"
+  notice "Setting persistent_storage is true. Jenkins data will prersist restarts."
+  quiet "Data stored in $JENKINS_HOST_DATA"
   PERSISTENT_VOLUME="--volume $CODE_DIRECTORY/.local-jenkins:/var/jenkins_home:rw"
 else
   PERSISTENT_VOLUME=""
@@ -313,6 +272,7 @@ docker run -d \
   --volume ${DOCKER_BIN}:/usr/bin/docker \
   --volume $CODE_DIRECTORY:/mnt/local-project:ro \
   --volume ./vars:/mnt/jkl-shared-lib:ro \
+  --env QUIET=$QUIET \
   $PERSISTENT_VOLUME \
   ${IMAGE_TAG} \
   >&"$out_fd"
@@ -328,10 +288,12 @@ else
     docker logs -f "$CONTAINER_NAME" 2>&1
 fi | grep --line-buffered -E "Jenkins is fully up and running|entrypoint" | while IFS= read -r line; do
     if [[ "$line" == *"Jenkins is fully up and running"* ]]; then
-      info "-----------------------------------------------------"
-      info "Access Local Jenkins at http://localhost:$LOCAL_JENKINS_PORT"
-      info "-----------------------------------------------------"
+      info  "-----------------------------------------------------"
+      quiet "Access Local Jenkins at http://localhost:$LOCAL_JENKINS_PORT"
+      info  "-----------------------------------------------------"
     else
-      echo "$line"
+      if ! is_verbose; then
+        echo "$line"
+      fi
     fi
 done
