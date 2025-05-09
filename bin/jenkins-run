@@ -298,6 +298,7 @@ docker run -d \
   --volume ${DOCKER_BIN}:/usr/bin/docker \
   --volume $CODE_DIRECTORY:/mnt/local-project:ro \
   --volume ./vars:/mnt/jkl-shared-lib:ro \
+  --volume ./style:/var/jenkins_home/userContent/style \
   --env QUIET=$QUIET \
   $PERSISTENT_VOLUME \
   ${IMAGE_TAG} \

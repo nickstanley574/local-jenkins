@@ -33,4 +33,12 @@ unclassified:
                 remote: "file:///var/lib/jenkins/jkl-shared-lib"
                 credentialsId: ""
 
+appearance:
+  simpleTheme:
+    elements:
+      - cssUrl:
+          url: "/userContent/style/jenkins-theme.css"
+      - jsUrl:
+          url: "/userContent/style/jenkins-theme.js"
+
 jobs: []

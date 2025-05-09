@@ -1,0 +1,19 @@
+
+#page-header {
+    background-color: RoyalBlue ;
+}
+
+
+body::after {
+  content: "JKL - Local Jenkins Example";
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  font-size: 14px;
+  pointer-events: none;
+  background-color: RoyalBlue ;
+  padding: 6px;
+  color: white;
+  border-radius: 4px;
+  font-weight: bold;
+}

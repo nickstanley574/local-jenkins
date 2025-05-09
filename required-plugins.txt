@@ -2,3 +2,4 @@ configuration-as-code:latest
 job-dsl:latest
 workflow-aggregator:latest
 pipeline-graph-view:latest
+simple-theme-plugin
