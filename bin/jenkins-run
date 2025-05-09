@@ -71,13 +71,13 @@ done
 # CONSTANTS
 ###############################################################################
 
-DEFAULT_PORT="8080"
-CONTAINER_NAME=local-jenkins
-
 CODE_DIRECTORY=$PWD
+PROJECT_NAME=$(basename "$PWD")
 CONFIG_FILE="$CODE_DIRECTORY/local-jenkins.yaml"
-IMAGE_TAG="${CONTAINER_NAME}:$(date +"%Y%m%d-%H%M%S")"
 
+DEFAULT_PORT="8080"
+CONTAINER_NAME=jkl-$PROJECT_NAME
+IMAGE_TAG="${CONTAINER_NAME}:$(date +"%Y%m%d-%H%M%S")"
 JENKINS_HOST_DATA=${CODE_DIRECTORY}/.local-jenkins
 
 ###############################################################################
@@ -117,6 +117,32 @@ fi
 ###############################################################################
 # CLEANUP
 ###############################################################################
+
+# This check needs to happen before the trap since if 
+# the user ctrl + c this part the trap would be triggered
+# the container deleted.
+# Check if the container exists (running or stopped)
+if docker ps -a --format '{{.Names}}' | grep -wq "$CONTAINER_NAME"; then
+  error "Container '$CONTAINER_NAME' already exists."
+
+  while true; do
+    read -rp "Do you want to delete it? (y/n): " yn
+    case $yn in
+      [Yy]* )
+        if ! docker rm -f "$CONTAINER_NAME" >/dev/null; then
+          error "Failed to remove container '$CONTAINER_NAME'."
+          exit 1
+        fi
+        notice "Container '$CONTAINER_NAME' has been deleted."
+        break;;
+      [Nn]* )
+        warn "Exiting script."
+        exit 1;;
+      * )
+        echo "Please answer yes (y) or no (n).";;
+    esac
+  done
+fi
 
 cleanup_and_exit() {
   # Stops and removes a Docker container, prunes old images, and exits the scrilspt.
@@ -297,3 +323,6 @@ fi | grep --line-buffered -E "Jenkins is fully up and running|entrypoint" | whil
       fi
     fi
 done
+
+warn "Local Jenkins container exited."
+cleanup_and_exit
