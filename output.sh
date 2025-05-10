@@ -7,11 +7,18 @@
 # Color codes are defined for red, yellow, and no color (NC) to format the outputs.
 
 script_name=$(basename "$0")
+script_name="${script_name%.*}"
 
 REDB='\033[1;31m'   # Bold Red
 YELLOW='\033[0;33m' # Yellow
 CYAN='\033[0;36m'
 NC='\033[0m'        # No Color
+
+# Function to check if verbose mode is enabled
+is_verbose() { [[ "$VERBOSE" -eq 1 ]] }
+
+is_quiet() { [[ "$QUIET" -eq 1 ]] }
+
 
 console_log() {
   prefix="[$script_name] "

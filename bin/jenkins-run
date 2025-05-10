@@ -87,10 +87,6 @@ JENKINS_HOST_DATA=${CODE_DIRECTORY}/.local-jenkins
 # Enable shell debug mode if DEBUG level is 2 or higher
 [ $DEBUG -ge 2 ] && set -x
 
-# Function to check if verbose mode is enabled
-is_verbose() { [[ "$VERBOSE" -eq 1 ]] }
-
-is_quiet() { [[ "$QUIET" -eq 1 ]] }
 
 # Configures output based on the DEBUG and VERBOSE variables.
 # If DEBUG is set, verbose output is enabled by exporting VERBOSE=1.
