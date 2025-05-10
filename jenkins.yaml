@@ -1,9 +1,9 @@
 jenkins:
   systemMessage: |
-    <div style="padding: 20px; background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; font-weight: bold; border-radius: 5px; margin: 15px; font-size: 1.2em; text-align: center;">
-    Configured by CasC: This Jenkins installation for local development.<br>
+   <div style="padding: 8px; background-color: #fff8e1; border: 1px solid #856404; color: #6e5203; font-size: 1.15em; font-weight: bold; border-radius: 10px; margin-bottom: 10px; text-align: center;">
+    Configured by JCasC: This Jenkins installation for local development.<br>
     Many critical security settings have been disabled.<br>
-    Everything is this Jenkins container should be assumed to be ephemeral, do not rely on data to survive restarts.
+    All data in this Jenkins container should be assumed ephemeral.
     </div>
   securityRealm:
     local:
