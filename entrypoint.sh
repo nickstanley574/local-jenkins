@@ -78,6 +78,12 @@ reload_jcasc() {
 
 reload_jcasc
 
+# Mark Jenkins shared lib as a safe Git directory to avoid ownership warnings.
+# Ensures script runs without user mapping issues in rootless/non-rootless Docker
+# setups. Git 2.35.2+ introduced "safe directory" to mitigate security risks in
+# repo owned by different users.
+git config --global --add safe.directory /var/lib/jenkins/jkl-shared-lib
+
 cd /var/lib/jenkins/jkl-shared-lib
 cp /mnt/jkl-shared-lib/* /var/lib/jenkins/jkl-shared-lib/vars/
 git init --initial-branch=master
