@@ -78,7 +78,7 @@ CONFIG_FILE="$CODE_DIRECTORY/local-jenkins.yaml"
 DEFAULT_PORT="8080"
 CONTAINER_NAME=jkl-$PROJECT_NAME
 IMAGE_TAG="${CONTAINER_NAME}:$(date +"%Y%m%d-%H%M%S")"
-JENKINS_HOST_DATA=${CODE_DIRECTORY}/.local-jenkins
+JENKINS_HOST_DATA=${CODE_DIRECTORY}/.local-jenkins/data
 
 ###############################################################################
 # LOGGING FUNCTIONS
@@ -255,7 +255,7 @@ persistent_storage_value=$(yq '.persistent_storage // null' "$CONFIG_FILE")
 if [[ "$persistent_storage_value" == "true" ]]; then
   notice "Setting persistent_storage is true. Jenkins data will prersist restarts."
   quiet "Data stored in $JENKINS_HOST_DATA"
-  PERSISTENT_VOLUME="--volume $CODE_DIRECTORY/.local-jenkins:/var/jenkins_home:rw"
+  PERSISTENT_VOLUME="--volume $JENKINS_HOST_DATA:/var/jenkins_home"
 else
   PERSISTENT_VOLUME=""
   if [[ -d "$JENKINS_HOST_DATA" ]]; then
