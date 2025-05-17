@@ -71,7 +71,8 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
-# Check if you are in a local-jenkins project. 
+# Ensure this script is run from the top-level local-jenkins project directory.
+# The presence of local-jenkins.yaml is used as a marker to validate the current directory.
 if [[ ! -f "$(pwd)/local-jenkins.yaml" ]]; then
   error "Error: local-jenkins.yaml not found in current directory: $(pwd)"
   exit 1
