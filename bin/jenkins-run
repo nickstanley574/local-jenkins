@@ -71,6 +71,12 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
+# Check if you are in a local-jenkins project. 
+if [[ ! -f "$(pwd)/local-jenkins.yaml" ]]; then
+  error "Error: local-jenkins.yaml not found in current directory: $(pwd)"
+  exit 1
+fi
+
 ###############################################################################
 # CONSTANTS
 ###############################################################################
