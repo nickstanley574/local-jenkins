@@ -29,6 +29,8 @@ def call(String specificFile = '') {
             script: """
                 cd /mnt/local-project/
 
+                git config --global --add safe.directory /mnt/local-project
+
                 # Get the list of non-ignored files
                 file_list=\$(git ls-files --cached --others --exclude-standard)
 

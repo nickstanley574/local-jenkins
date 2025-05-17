@@ -235,7 +235,20 @@ verbose "Docker buildx version: $(docker buildx version)"
 
 security_options=$(docker info --format '{{.SecurityOptions}}')
 
+# IMPORTANT: This configuration is only safe when running in **rootless** mode.
+# Using --user 0:0 runs the container as root *inside* the container, but it maps to your
+# non-root user on the host system, preserving host-level security.
+# See the following for more context on rootless containers and UID mapping:
+# https://blog.christophersmart.com/2021/01/26/user-ids-and-rootless-containers-with-podman/
+# https://github.com/itzg/docker-minecraft-server/issues/1934
+# Necessary to allow the --reset option to  delete files in ./local-jenkins-data.
+USER_MAPPING="--user 0:0"
+
 if [[ $security_options != *"rootless"* ]]; then
+
+    # Remove mapping if running in rootful mode
+    USER_MAPPING=""
+
     if [ $ALLOW_DOCKER_ROOTFUL -ge 1 ]; then
       warn
       warn "Notice: Docker is not in rootless mode.\033[0m"
@@ -325,12 +338,13 @@ info "Run $CONTAINER_NAME container..."
 docker run -d \
   --name ${CONTAINER_NAME} \
   --publish "$LOCAL_JENKINS_PORT:8080" \
+  --env QUIET=$QUIET \
   --volume ${DOCKER_SOCKET}:/var/run/docker.sock \
   --volume ${DOCKER_BIN}:/usr/bin/docker \
   --volume $CODE_DIRECTORY:/mnt/local-project:ro \
   --volume ./vars:/mnt/jkl-shared-lib:ro \
   --volume ./style:/var/jenkins_home/userContent/style \
-  --env QUIET=$QUIET \
+  $USER_MAPPING \
   $PERSISTENT_VOLUME \
   ${IMAGE_TAG} \
   >&"$out_fd"
