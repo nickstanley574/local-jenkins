@@ -16,6 +16,7 @@ source $(dirname "$0")/../output.sh
 VERBOSE=${VERBOSE:-0}
 DEBUG=${DEBUG:-0}
 QUIET=${QUIET:-0}
+RESET=${RESET:-0}
 FORCE_BUILD=${FORCE_BUILD:-0}
 ALLOW_DOCKER_ROOTFUL=${ALLOW_DOCKER_ROOTFUL:-0}
 
@@ -55,6 +56,9 @@ while [[ $# -gt 0 ]]; do
         -f|--force-build)
             FORCE_BUILD=1
             ;;
+        --reset)
+            RESET=1
+            ;;
         --allow-docker-rootful)
             ALLOW_DOCKER_ROOTFUL=1
             ;;
@@ -87,7 +91,6 @@ JENKINS_HOST_DATA=${CODE_DIRECTORY}/.local-jenkins/data
 # Enable shell debug mode if DEBUG level is 2 or higher
 [ $DEBUG -ge 2 ] && set -x
 
-
 # Configures output based on the DEBUG and VERBOSE variables.
 # If DEBUG is set, verbose output is enabled by exporting VERBOSE=1.
 # If VERBOSE is unset, the script suppresses output by redirecting it to /dev/null.
@@ -108,6 +111,31 @@ if is_verbose; then
 else 
   VERBOSE_FLAG="--quiet"
   exec {out_fd}>/dev/null # suppress stdout
+fi
+
+###############################################################################
+# RESET
+###############################################################################
+
+# This block performs a full environment reset if RESET is set: it force-removes
+# matching containers and images, deletes mounted Jenkins data, and exits upon
+# completion.
+if [ $RESET -ge 1 ]; then
+
+  info "Remove any project containers..."
+  ids=$(docker ps -a --filter "name=^$CONTAINER_NAME$" -q)
+  if [ -n "$ids" ]; then docker rm -f $ids; fi
+
+  info "Remove all project images..."
+  images=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep "^$CONTAINER_NAME:" || true)
+  if [ -n "$images" ]; then docker rmi $images; fi
+
+  info "Delete any project mounted data..."
+  rm -rf $JENKINS_HOST_DATA
+
+  info "Reset for $PROJECT_NAME complete."
+  exit 0
+
 fi
 
 ###############################################################################
